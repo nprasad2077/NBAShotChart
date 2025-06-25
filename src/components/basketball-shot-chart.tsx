@@ -518,11 +518,31 @@ const BasketballShotChart = () => {
   };
 
   return (
-    <div className="relative w-full h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900 text-white overflow-hidden">
+    <div style={{
+      position: 'relative',
+      width: '100vw',
+      height: '100vh',
+      background: 'linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e)',
+      color: 'white',
+      overflow: 'hidden',
+      fontFamily: 'Arial, sans-serif'
+    }}>
       {/* Toggle UI Button */}
       <button
         onClick={() => setShowUI(!showUI)}
-        className="absolute top-5 left-80 z-50 bg-black bg-opacity-80 text-white p-2 rounded-full hover:bg-opacity-100 transition-all"
+        style={{
+          position: 'absolute',
+          top: '20px',
+          left: '350px',
+          zIndex: 101,
+          background: 'rgba(0,0,0,0.8)',
+          border: 'none',
+          color: 'white',
+          padding: '10px',
+          borderRadius: '50%',
+          cursor: 'pointer',
+          fontSize: '16px'
+        }}
         title="Toggle Controls"
       >
         ⚙️
@@ -530,42 +550,100 @@ const BasketballShotChart = () => {
 
       {/* Controls Panel */}
       {showUI && (
-        <div className="absolute top-0 left-0 z-40 p-5 bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-md rounded-br-3xl min-w-80 max-h-screen overflow-y-auto">
-          <h1 className="text-yellow-400 text-2xl font-bold mb-5 text-shadow">🏀 3D Shot Chart</h1>
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          zIndex: 100,
+          padding: '20px',
+          background: 'linear-gradient(135deg, rgba(0,0,0,0.8), rgba(0,0,0,0.6))',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '0 0 20px 0',
+          minWidth: '300px',
+          maxHeight: '90vh',
+          overflowY: 'auto'
+        }}>
+          <h1 style={{
+            color: '#ffd700',
+            marginBottom: '20px',
+            fontSize: '1.8em',
+            textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+          }}>🏀 3D Shot Chart</h1>
           
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div>
-              <label className="block font-bold mb-2 text-sm">Shot Data (JSON):</label>
+              <label style={{
+                display: 'block',
+                fontWeight: 'bold',
+                marginBottom: '5px',
+                fontSize: '0.9em'
+              }}>Shot Data (JSON):</label>
               <textarea
                 value={shotData}
                 onChange={(e) => setShotData(e.target.value)}
-                className="w-full p-2 rounded-lg bg-white/90 text-gray-800 text-xs h-24 resize-y font-mono"
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.9)',
+                  color: '#333',
+                  fontSize: '12px',
+                  height: '100px',
+                  resize: 'vertical',
+                  fontFamily: 'monospace',
+                  boxSizing: 'border-box'
+                }}
                 placeholder='[{"x": 5, "y": 15, "made": true}, {"x": -3, "y": 20, "made": false}]'
               />
-              <div className="text-xs text-gray-300 mt-1 leading-tight">
+              <div style={{
+                fontSize: '10px',
+                color: '#aaa',
+                marginTop: '5px',
+                lineHeight: '1.3'
+              }}>
                 Format: x (-25 to 25), y (4 to 47 feet from baseline)<br/>
                 Basket at (0, 4) - 4 feet from baseline
               </div>
             </div>
 
             <div>
-              <label className="block font-bold mb-2 text-sm">Shot Arc Height:</label>
+              <label style={{
+                display: 'block',
+                fontWeight: 'bold',
+                marginBottom: '5px',
+                fontSize: '0.9em'
+              }}>Shot Arc Height:</label>
               <input
                 type="range"
                 min="5"
                 max="25"
                 value={trajectoryHeight}
                 onChange={(e) => setTrajectoryHeight(parseInt(e.target.value))}
-                className="w-full"
+                style={{ width: '100%' }}
               />
             </div>
 
             <div>
-              <label className="block font-bold mb-2 text-sm">Camera Angle:</label>
+              <label style={{
+                display: 'block',
+                fontWeight: 'bold',
+                marginBottom: '5px',
+                fontSize: '0.9em'
+              }}>Camera Angle:</label>
               <select
                 value={viewAngle}
                 onChange={(e) => setViewAngle(e.target.value)}
-                className="w-full p-2 rounded-lg bg-white/90 text-gray-800 text-xs"
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.9)',
+                  color: '#333',
+                  fontSize: '12px',
+                  boxSizing: 'border-box'
+                }}
               >
                 <option value="overhead">Overhead View</option>
                 <option value="side">Side Angle</option>
@@ -574,54 +652,96 @@ const BasketballShotChart = () => {
               </select>
             </div>
 
-            <div className="space-y-2">
-              <label className="flex items-center">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '0.9em'
+              }}>
                 <input
                   type="checkbox"
                   checked={showCourt}
                   onChange={(e) => setShowCourt(e.target.checked)}
-                  className="mr-2"
+                  style={{ marginRight: '8px' }}
                 />
-                <span className="text-sm">Show Court</span>
+                Show Court
               </label>
 
-              <label className="flex items-center">
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '0.9em'
+              }}>
                 <input
                   type="checkbox"
                   checked={animateShots}
                   onChange={(e) => setAnimateShots(e.target.checked)}
-                  className="mr-2"
+                  style={{ marginRight: '8px' }}
                 />
-                <span className="text-sm">Animate Shots</span>
+                Animate Shots
               </label>
 
-              <label className="flex items-center">
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '0.9em'
+              }}>
                 <input
                   type="checkbox"
                   checked={showTrajectories}
                   onChange={(e) => setShowTrajectories(e.target.checked)}
-                  className="mr-2"
+                  style={{ marginRight: '8px' }}
                 />
-                <span className="text-sm">Show Trajectories</span>
+                Show Trajectories
               </label>
             </div>
 
-            <div className="flex gap-2 flex-wrap">
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
               <button
                 onClick={generateRandomData}
-                className="px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-800 rounded-lg font-bold hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs"
+                style={{
+                  padding: '8px 15px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(45deg, #ffd700, #ffed4e)',
+                  color: '#333',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  margin: '2px'
+                }}
               >
                 Sample Data
               </button>
               <button
                 onClick={updateVisualization}
-                className="px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-800 rounded-lg font-bold hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs"
+                style={{
+                  padding: '8px 15px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(45deg, #ffd700, #ffed4e)',
+                  color: '#333',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  margin: '2px'
+                }}
               >
                 Update
               </button>
               <button
                 onClick={clearChart}
-                className="px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-800 rounded-lg font-bold hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs"
+                style={{
+                  padding: '8px 15px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(45deg, #ffd700, #ffed4e)',
+                  color: '#333',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  margin: '2px'
+                }}
               >
                 Clear
               </button>
@@ -631,51 +751,135 @@ const BasketballShotChart = () => {
       )}
 
       {/* Stats Panel */}
-      <div className="absolute top-5 right-5 z-40 bg-gradient-to-br from-yellow-400/20 to-yellow-400/10 backdrop-blur-md border border-yellow-400/30 rounded-2xl p-4 min-w-48">
-        <div className="space-y-2">
-          <div className="flex justify-between items-center text-sm">
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        right: '20px',
+        zIndex: 100,
+        background: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,215,0,0.1))',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255,215,0,0.3)',
+        borderRadius: '15px',
+        padding: '15px',
+        minWidth: '200px'
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '0.9em'
+          }}>
             <span>Total Shots:</span>
-            <span className="font-bold text-yellow-400 text-lg">{stats.totalShots}</span>
+            <span style={{
+              fontWeight: 'bold',
+              color: '#ffd700',
+              fontSize: '1.1em'
+            }}>{stats.totalShots}</span>
           </div>
-          <div className="flex justify-between items-center text-sm">
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '0.9em'
+          }}>
             <span>Made:</span>
-            <span className="font-bold text-yellow-400 text-lg">{stats.madeShots}</span>
+            <span style={{
+              fontWeight: 'bold',
+              color: '#ffd700',
+              fontSize: '1.1em'
+            }}>{stats.madeShots}</span>
           </div>
-          <div className="flex justify-between items-center text-sm">
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '0.9em'
+          }}>
             <span>Shooting %:</span>
-            <span className="font-bold text-yellow-400 text-lg">{stats.shootingPct}%</span>
+            <span style={{
+              fontWeight: 'bold',
+              color: '#ffd700',
+              fontSize: '1.1em'
+            }}>{stats.shootingPct}%</span>
           </div>
-          <div className="flex justify-between items-center text-sm">
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '0.9em'
+          }}>
             <span>Avg Distance:</span>
-            <span className="font-bold text-yellow-400 text-lg">{stats.avgDistance} ft</span>
+            <span style={{
+              fontWeight: 'bold',
+              color: '#ffd700',
+              fontSize: '1.1em'
+            }}>{stats.avgDistance} ft</span>
           </div>
         </div>
       </div>
 
       {/* Control Buttons */}
-      <div className="absolute bottom-5 left-1/2 transform -translate-x-1/2 z-40 bg-black/80 backdrop-blur-md rounded-full px-6 py-3 flex gap-4 items-center">
+      <div style={{
+        position: 'absolute',
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 100,
+        background: 'rgba(0,0,0,0.8)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '25px',
+        padding: '15px 25px',
+        display: 'flex',
+        gap: '15px',
+        alignItems: 'center'
+      }}>
         <button
           onClick={rotateCamera}
-          className="bg-white/20 text-white border border-white/30 px-4 py-2 rounded-full text-sm hover:bg-white/30 transition-all"
+          style={{
+            background: 'rgba(255,255,255,0.2)',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.3)',
+            padding: '10px 15px',
+            borderRadius: '20px',
+            fontSize: '14px',
+            cursor: 'pointer'
+          }}
         >
           🔄 Rotate
         </button>
         <button
           onClick={resetCamera}
-          className="bg-white/20 text-white border border-white/30 px-4 py-2 rounded-full text-sm hover:bg-white/30 transition-all"
+          style={{
+            background: 'rgba(255,255,255,0.2)',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.3)',
+            padding: '10px 15px',
+            borderRadius: '20px',
+            fontSize: '14px',
+            cursor: 'pointer'
+          }}
         >
           📷 Reset View
         </button>
         <button
           onClick={toggleFullscreen}
-          className="bg-white/20 text-white border border-white/30 px-4 py-2 rounded-full text-sm hover:bg-white/30 transition-all"
+          style={{
+            background: 'rgba(255,255,255,0.2)',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.3)',
+            padding: '10px 15px',
+            borderRadius: '20px',
+            fontSize: '14px',
+            cursor: 'pointer'
+          }}
         >
           ⛶ Fullscreen
         </button>
       </div>
 
       {/* Three.js Container */}
-      <div ref={mountRef} className="w-full h-full" />
+      <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
     </div>
   );
 };

@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Basketball Shot Chart</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; background-color: #1a202c; /* Tailwind gray-900 */ }
+        #container { width: 100vw; height: 100vh; display: block; }
+        #controlsPanel {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background-color: rgba(45, 55, 72, 0.9); /* Tailwind gray-800 with opacity */
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            z-index: 10;
+            width: 300px;
+            max-height: calc(100vh - 30px);
+            overflow-y: auto;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+        #controlsPanel label, #controlsPanel input, #controlsPanel button, #controlsPanel select, #controlsPanel textarea {
+            display: block;
+            margin-bottom: 12px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #controlsPanel input[type="number"], #controlsPanel select, #controlsPanel textarea {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #4A5568; /* Tailwind gray-600 */
+            background-color: #2D3748; /* Tailwind gray-700 */
+            color: white;
+        }
+        #controlsPanel input[type="radio"] {
+            display: inline-block;
+            width: auto;
+            margin-right: 5px;
+        }
+        #controlsPanel .radio-group label {
+            display: inline-block;
+            margin-right: 15px;
+            font-weight: normal;
+        }
+        #controlsPanel button {
+            padding: 10px 15px;
+            background-color: #4299E1; /* Tailwind blue-500 */
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-weight: 500;
+        }
+        #controlsPanel button:hover {
+            background-color: #3182CE; /* Tailwind blue-600 */
+        }
+        #controlsPanel button.secondary {
+            background-color: #4A5568; /* Tailwind gray-600 */
+        }
+        #controlsPanel button.secondary:hover {
+            background-color: #2D3748; /* Tailwind gray-700 */
+        }
+        #controlsPanel textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .shot-list-item {
+            font-size: 0.875rem;
+            padding: 4px 0;
+            border-bottom: 1px solid #4A5568; /* Tailwind gray-600 */
+        }
+        .shot-list-item:last-child {
+            border-bottom: none;
+        }
+        #messageBox {
+            position: fixed;
+            bottom: 20px; /* Changed from top to bottom */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #F56565; /* Tailwind red-500 */
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 0.9rem;
+        }
+        .legend { margin-top: 15px; padding-top: 10px; border-top: 1px solid #4A5568; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; }
+        .legend-color { width: 15px; height: 15px; border-radius: 3px; margin-right: 8px; }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+
+    <div id="controlsPanel">
+        <h2 class="text-xl font-semibold mb-4">Shot Controls</h2>
+
+        <h3 class="text-lg font-medium mb-2">Manual Shot Entry</h3>
+        <label for="shotX">Shot X (-25 to 25 ft):</label>
+        <input type="number" id="shotX" name="shotX" value="0" step="0.1">
+
+        <label for="shotZ">Shot Z (0 to -47 ft):</label>
+        <input type="number" id="shotZ" name="shotZ" value="-20" step="0.1">
+
+        <div class="radio-group mb-3">
+            <span class="font-medium">Result:</span>
+            <label><input type="radio" name="shotResult" value="1"> Made</label>
+            <label><input type="radio" name="shotResult" value="0" checked> Missed</label>
+        </div>
+        <button id="addShotButton">Add Manual Shot</button>
+
+        <h3 class="text-lg font-medium mt-6 mb-2">Load Shots from JSON</h3>
+        <label for="jsonData">Paste JSON Data:</label>
+        <textarea id="jsonData" placeholder='[{"top":100,"left":250,"result":1}, ...]'></textarea>
+        <button id="loadJsonButton">Load Shots from JSON</button>
+        <button id="clearShotsButton" class="secondary mt-2">Clear All Shots</button>
+
+        <div class="legend">
+            <h4 class="text-md font-medium mb-1">Legend:</h4>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #48BB78;"></div> <!-- Green for Made -->
+                <span>Made Shot</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #F56565;"></div> <!-- Red for Missed -->
+                <span>Missed Shot</span>
+            </div>
+        </div>
+
+        <h3 class="text-lg font-medium mt-6 mb-2">Shot Log:</h3>
+        <div id="shotLog" class="max-h-48 overflow-y-auto text-sm bg-gray-700 p-2 rounded-md">
+            <!-- Shot logs will appear here -->
+        </div>
+    </div>
+
+    <div id="messageBox"></div>
+
+    <script>
+        // --- Constants ---
+        const COURT_WIDTH = 50; // NBA: 50ft
+        const COURT_LENGTH = 94; // NBA: 94ft (full court)
+        const HALF_COURT_LENGTH = COURT_LENGTH / 2; // 47ft
+        const HOOP_HEIGHT = 10; // NBA: 10ft
+        const BACKBOARD_OFFSET_FROM_BASELINE = 4; // Backboard is 4ft in from baseline (rim center)
+
+        const HOOP_RADIUS = 0.75; // Approx 18 inches diameter / 2
+        const BACKBOARD_WIDTH = 6;
+        const BACKBOARD_HEIGHT = 3.5;
+        const NET_HEIGHT = 1.5; // Approximate net height
+
+        // For mapping pixel data from common shot charts (e.g., 500x470px for half court)
+        const PIXEL_CHART_IMAGE_WIDTH = 500; // Assumed width of 2D chart image
+        const PIXEL_CHART_IMAGE_HEIGHT = 470; // Assumed height of 2D chart image (baseline to half-court)
+
+        // --- Three.js Scene Setup ---
+        let scene, camera, renderer, controls;
+        let courtMesh, hoopGroup;
+        const shotMarkers = [];
+
+        // --- Initialize Scene ---
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a202c); // Tailwind gray-900
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 35, 0); // Slightly higher, looking towards hoop
+            camera.lookAt(0, 0, -HALF_COURT_LENGTH / 2);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('container').appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            directionalLight.position.set(15, 40, -25);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 1;
+            directionalLight.shadow.camera.far = 100;
+            directionalLight.shadow.camera.left = -60;
+            directionalLight.shadow.camera.right = 60;
+            directionalLight.shadow.camera.top = 60;
+            directionalLight.shadow.camera.bottom = -60;
+            scene.add(directionalLight);
+            // const helper = new THREE.CameraHelper( directionalLight.shadow.camera );
+            // scene.add( helper );
+
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 0, -HALF_COURT_LENGTH * 0.6);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 10;
+            controls.maxDistance = 120;
+            controls.maxPolarAngle = Math.PI / 2 - 0.05;
+
+            createCourt();
+
+            hoopGroup = createHoop();
+            // Position hoop group so rim center is at (0, HOOP_HEIGHT, correct_z_for_rim)
+            hoopGroup.position.set(0, HOOP_HEIGHT, -HALF_COURT_LENGTH + BACKBOARD_OFFSET_FROM_BASELINE);
+            scene.add(hoopGroup);
+            
+            window.addEventListener('resize', onWindowResize, false);
+            document.getElementById('addShotButton').addEventListener('click', handleAddManualShot);
+            document.getElementById('loadJsonButton').addEventListener('click', loadShotsFromJSON);
+            document.getElementById('clearShotsButton').addEventListener('click', clearAllShots);
+            
+            // Add some initial sample shots (now with made/missed status)
+            addShotMarker(-10, -15, false); // Missed
+            addShotMarker(5, -25, true);   // Made
+            addShotMarker(0, -5, true);    // Made (Close to basket)
+            addShotMarker(22, -8, false); // Missed Corner three (approx)
+
+            animate();
+        }
+
+        // --- Create Court ---
+        function createCourt() {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            const canvasWidth = 512; 
+            const canvasHeight = 1024; // For full court length
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            const scaleX = canvasWidth / COURT_WIDTH;
+            const scaleZ = canvasHeight / COURT_LENGTH;
+
+            context.fillStyle = '#DEB887'; // BurlyWood
+            context.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            context.strokeStyle = '#FFFFFF'; 
+            context.lineWidth = Math.max(1, 2.5 * (scaleX + scaleZ) / 2); 
+
+            const halfCourtCanvasHeight = canvasHeight / 2; // Represents 47ft
+
+            // --- Draw Markings for one half (top half of canvas, z=0 to -47ft) ---
+            // Baseline (at z = -47ft, which is canvas y=0 for this half)
+            context.beginPath();
+            context.moveTo(0, 0); context.lineTo(canvasWidth, 0);
+            context.stroke();
+
+            // Sidelines for this half
+            context.beginPath();
+            context.moveTo(0, 0); context.lineTo(0, halfCourtCanvasHeight);
+            context.moveTo(canvasWidth, 0); context.lineTo(canvasWidth, halfCourtCanvasHeight);
+            context.stroke();
+            
+            // Center line (at z = 0ft, which is canvas y=halfCourtCanvasHeight for this half)
+            context.beginPath();
+            context.moveTo(0, halfCourtCanvasHeight); context.lineTo(canvasWidth, halfCourtCanvasHeight);
+            context.stroke();
+
+            // Key (Paint)
+            const keyWidthPx = 16 * scaleX;
+            const keyLengthPx = 19 * scaleZ; // Free throw line to baseline
+            const keyRectX = (canvasWidth - keyWidthPx) / 2;
+            const keyRectY = 0; // From baseline (canvas y=0)
+
+            context.fillStyle = 'rgba(86, 30, 100, 0.6)'; // Darker Purple, slightly transparent
+            context.fillRect(keyRectX, keyRectY, keyWidthPx, keyLengthPx);
+            context.strokeRect(keyRectX, keyRectY, keyWidthPx, keyLengthPx); // Outline for key
+
+            // Free Throw Circle (Half circle in the key)
+            const ftCircleRadiusPx = 6 * scaleX;
+            context.beginPath();
+            context.arc(canvasWidth / 2, keyLengthPx, ftCircleRadiusPx, Math.PI, 0, false);
+            context.stroke();
+
+            // Free Throw Line
+            context.beginPath();
+            context.moveTo(keyRectX, keyLengthPx);
+            context.lineTo(keyRectX + keyWidthPx, keyLengthPx);
+            context.stroke();
+            
+            // Restricted Area Arc
+            const restrictedAreaRadiusPx = 4 * scaleX;
+            const hoopCanvasXPx = canvasWidth / 2;
+            // Hoop Z position from baseline in feet, then scaled to canvas pixels
+            const hoopCanvasYPx = BACKBOARD_OFFSET_FROM_BASELINE * scaleZ; 
+            context.beginPath();
+            // Arc starts/ends slightly before hitting backboard posts for a typical representation
+            const restrictedAngleOffset = Math.atan( (0.5 * scaleX) / restrictedAreaRadiusPx); // Small offset if needed
+            context.arc(hoopCanvasXPx, hoopCanvasYPx, restrictedAreaRadiusPx, Math.PI - (Math.PI/2 - restrictedAngleOffset) , (Math.PI/2 - restrictedAngleOffset) , false);
+            context.stroke();
+
+            // Three-Point Line
+            // Corner three: 22ft from center of hoop perpendicular to baseline. Sideline is 25ft from center. So 3ft from sideline.
+            const threePtCornerXOffsetPx = 3 * scaleX; // 3ft from sideline
+            // End of straight line: 14ft from baseline (as per NBA diagram for where arc begins)
+            const threePtCornerStraightLengthPx = 14 * scaleZ; 
+
+            context.beginPath();
+            // Left corner three
+            context.moveTo(threePtCornerXOffsetPx, 0); // Starts at baseline
+            context.lineTo(threePtCornerXOffsetPx, threePtCornerStraightLengthPx);
+            // Right corner three
+            context.moveTo(canvasWidth - threePtCornerXOffsetPx, 0); // Starts at baseline
+            context.lineTo(canvasWidth - threePtCornerXOffsetPx, threePtCornerStraightLengthPx);
+
+            // Arc part: 23.75ft radius from center of hoop
+            const threePtArcRadiusPx = 23.75 * scaleX; // Use scaleX as it's a horizontal radius mostly
+            // Angle where arc meets the straight corner line
+            // x-distance from hoop center to where arc meets straight line is (25ft - 3ft) = 22ft
+            // This 22ft is the adjacent side of a right triangle with hypotenuse threePtArcRadiusPx
+            const angle = Math.acos( ( (COURT_WIDTH/2) - (COURT_WIDTH/2 - 22) )*scaleX / threePtArcRadiusPx );
+             // Corrected angle calculation:
+            const xDistForArcEnd = (COURT_WIDTH/2 - threePtCornerXOffsetPx) / scaleX ; // this is 22ft
+            const correctedAngle = Math.asin(xDistForArcEnd / 23.75); // angle relative to line perpendicular to baseline
+
+            context.arc(hoopCanvasXPx, hoopCanvasYPx, threePtArcRadiusPx, Math.PI - correctedAngle, correctedAngle, false);
+            context.stroke();
+
+            const courtTexture = new THREE.CanvasTexture(canvas);
+            const courtMaterial = new THREE.MeshStandardMaterial({ map: courtTexture, side: THREE.DoubleSide, roughness: 0.8, metalness: 0.2 });
+            
+            const courtGeometry = new THREE.PlaneGeometry(COURT_WIDTH, COURT_LENGTH);
+            courtMesh = new THREE.Mesh(courtGeometry, courtMaterial);
+            courtMesh.rotation.x = -Math.PI / 2;
+            courtMesh.receiveShadow = true;
+            scene.add(courtMesh);
+        }
+
+        // --- Create Hoop ---
+        function createHoop() {
+            const group = new THREE.Group();
+
+            // Backboard
+            const backboardGeo = new THREE.BoxGeometry(BACKBOARD_WIDTH, BACKBOARD_HEIGHT, 0.25);
+            const backboardMat = new THREE.MeshStandardMaterial({ 
+                color: 0xe0e0e0, 
+                transparent: true, 
+                opacity: 0.75,
+                roughness: 0.1,
+                metalness: 0.0
+            });
+            const backboard = new THREE.Mesh(backboardGeo, backboardMat);
+            // Rim is at y=0 in group. Rim is ~0.5ft from bottom of backboard.
+            // So backboard center is (BACKBOARD_HEIGHT/2 - 0.5ft) above rim.
+            backboard.position.y = (BACKBOARD_HEIGHT / 2) - 0.5; 
+            backboard.castShadow = true;
+            group.add(backboard);
+
+            // Hoop (Rim)
+            const rimGeo = new THREE.TorusGeometry(HOOP_RADIUS, 0.1, 16, 100);
+            const rimMat = new THREE.MeshStandardMaterial({ color: 0xff8c00, roughness: 0.4, metalness: 0.6 }); // DarkOrange
+            const rim = new THREE.Mesh(rimGeo, rimMat);
+            rim.rotation.x = Math.PI / 2;
+            // rim.position.z = 0; // Rim center is at group's z-origin, backboard slightly behind if needed
+            rim.castShadow = true;
+            group.add(rim);
+
+            // Net
+            const netMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                wireframe: true, // Simple net look
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.8
+            });
+            // Tapered cylinder for net
+            const netGeo = new THREE.CylinderGeometry(HOOP_RADIUS - 0.05, HOOP_RADIUS * 0.6, NET_HEIGHT, 12, 5, true);
+            const net = new THREE.Mesh(netGeo, netMat);
+            net.position.y = -NET_HEIGHT / 2 - 0.05; // Hangs below the rim
+            // net.position.z = rim.position.z;
+            group.add(net);
+
+            // Post (Simplified)
+            const postGeo = new THREE.CylinderGeometry(0.25, 0.25, HOOP_HEIGHT + 1, 8); // Extends slightly into ground for stability illusion
+            const postMat = new THREE.MeshStandardMaterial({ color: 0x505050, roughness:0.6, metalness: 0.4 });
+            const post = new THREE.Mesh(postGeo, postMat);
+            // Group origin is at rim height. Post base should be on ground.
+            post.position.y = -HOOP_HEIGHT/2 ; // Center of post such that it reaches ground
+            post.position.z = -HOOP_RADIUS - 0.3; // Behind the backboard plane
+            post.castShadow = true;
+            group.add(post);
+            
+            return group;
+        }
+
+        // --- Handle Manual Shot Addition ---
+        function handleAddManualShot() {
+            const x = parseFloat(document.getElementById('shotX').value);
+            const z = parseFloat(document.getElementById('shotZ').value);
+            const isMade = document.querySelector('input[name="shotResult"]:checked').value === "1";
+
+            if (isNaN(x) || isNaN(z)) {
+                showMessage("Invalid coordinates for manual shot.", true);
+                return;
+            }
+            if (x < -COURT_WIDTH / 2 || x > COURT_WIDTH / 2 || z > 0 || z < -HALF_COURT_LENGTH) {
+                showMessage("Coordinates are off the visible half-court. X: -25 to 25, Z: 0 to -47.", true);
+                return;
+            }
+            addShotMarker(x, z, isMade);
+        }
+        
+        // --- Load Shots from JSON ---
+        function loadShotsFromJSON() {
+            const jsonDataString = document.getElementById('jsonData').value;
+            if (!jsonDataString.trim()) {
+                showMessage("JSON data is empty.", true);
+                return;
+            }
+            try {
+                const shotsData = JSON.parse(jsonDataString);
+                if (!Array.isArray(shotsData)) {
+                    showMessage("JSON data must be an array of shot objects.", true);
+                    return;
+                }
+
+                clearAllShots(false); // Clear existing shots without showing message
+
+                let shotsAdded = 0;
+                shotsData.forEach((shot, index) => {
+                    let { shot_x, shot_z, result, top, left } = shot;
+                    let x, z;
+                    const isMade = result === 1 || result === true || String(result).toLowerCase() === 'made';
+
+                    if (typeof shot_x === 'number' && typeof shot_z === 'number') {
+                        x = shot_x;
+                        z = shot_z;
+                    } else if (typeof top === 'number' && typeof left === 'number') {
+                        // Map pixel coordinates (top, left) to court coordinates (x, z)
+                        // Assumes top=0 is baseline under hoop, left=0 is left edge of a 500x470px chart
+                        // X: -25 (left sideline) to 25 (right sideline). Hoop at X=0.
+                        // Z: 0 (mid-court) to -47 (baseline under hoop).
+                        x = (left / PIXEL_CHART_IMAGE_WIDTH - 0.5) * COURT_WIDTH;
+                        z = -(top / PIXEL_CHART_IMAGE_HEIGHT) * HALF_COURT_LENGTH;
+                    } else {
+                        console.warn(`Shot data at index ${index} is missing coordinates (shot_x/shot_z or top/left). Skipping.`);
+                        return; // Skip this shot
+                    }
+                    
+                    // Validate coordinates before adding
+                    if (x < -COURT_WIDTH / 2 - 1 || x > COURT_WIDTH / 2 + 1 || z > 1 || z < -HALF_COURT_LENGTH -1 ) { // Allow slight margin for error
+                         console.warn(`Shot ${index+1} coordinates (${x.toFixed(1)},${z.toFixed(1)}) seem off-court. Skipping.`);
+                    } else {
+                        addShotMarker(x, z, isMade);
+                        shotsAdded++;
+                    }
+                });
+                showMessage(`${shotsAdded} shots loaded successfully.`, false);
+                document.getElementById('jsonData').value = ''; // Clear textarea
+            } catch (error) {
+                showMessage("Error parsing JSON data: " + error.message, true);
+                console.error("JSON Parsing Error:", error);
+            }
+        }
+
+        // --- Add Shot Marker to Scene ---
+        function addShotMarker(x, z, isMade) {
+            const shotMarkerHeight = 1.5; // Height of the cylinder marker
+            const shotRadius = 0.35;
+            const shotGeo = new THREE.CylinderGeometry(shotRadius, shotRadius * 0.8, shotMarkerHeight, 16);
+            const shotColor = isMade ? 0x48BB78 : 0xF56565; // Green for made, Red for missed (Tailwind colors)
+            const shotMat = new THREE.MeshStandardMaterial({ 
+                color: shotColor, 
+                emissive: shotColor, // Make it glow slightly
+                emissiveIntensity: 0.3,
+                roughness: 0.5,
+                metalness: 0.1
+            });
+            
+            const marker = new THREE.Mesh(shotGeo, shotMat);
+            marker.position.set(x, shotMarkerHeight / 2, z); // Position base of cylinder on court
+            marker.castShadow = true;
+            // marker.receiveShadow = true; // Less important for small markers
+
+            scene.add(marker);
+            shotMarkers.push(marker);
+
+            // Log the shot
+            const shotLog = document.getElementById('shotLog');
+            const logEntry = document.createElement('div');
+            logEntry.classList.add('shot-list-item');
+            logEntry.textContent = `Shot at (X: ${x.toFixed(1)}, Z: ${z.toFixed(1)}) - ${isMade ? 'Made' : 'Missed'}`;
+            logEntry.style.color = isMade ? '#A7F3D0' : '#FEB2B2'; // Lighter shades for log text
+            shotLog.insertBefore(logEntry, shotLog.firstChild);
+        }
+
+        // --- Clear All Shot Markers ---
+        function clearAllShots(showMessageConfirmation = true) {
+            shotMarkers.forEach(marker => scene.remove(marker));
+            shotMarkers.length = 0; // Empty the array
+            document.getElementById('shotLog').innerHTML = ''; // Clear the log
+            if (showMessageConfirmation) {
+                showMessage("All shots cleared.", false);
+            }
+        }
+        
+        // --- Show Message ---
+        function showMessage(message, isError = false) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.style.backgroundColor = isError ? '#C53030' : '#38A169'; // Darker Red for error, Darker Green for success
+            messageBox.style.display = 'block';
+            // Fade out message
+            messageBox.style.opacity = 1;
+            setTimeout(() => {
+                let op = 1;
+                const timer = setInterval(function () {
+                    if (op <= 0.1){
+                        clearInterval(timer);
+                        messageBox.style.display = 'none';
+                    }
+                    messageBox.style.opacity = op;
+                    messageBox.style.filter = 'alpha(opacity=' + op * 100 + ")";
+                    op -= op * 0.1;
+                }, 50);
+            }, 2500);
+        }
+
+        // --- Handle Window Resize ---
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- Start ---
+        init();
+    </script>
+</body>
+</html>

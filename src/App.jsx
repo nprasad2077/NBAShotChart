@@ -1,5 +1,4 @@
-import ShotChart from './components/ShotChart';
-import BasketballShotChart from './components/BasketballShotChart';
+import BasketballShotChart from "./components/basketball-shot-chart"
 
 
 function App() {
