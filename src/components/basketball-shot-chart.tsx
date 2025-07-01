@@ -84,6 +84,11 @@ const BasketballShotChart = () => {
     updateVisualization();
   }, [trajectoryHeight, showTrajectories]);
 
+  // This is the added useEffect hook to fix the animation toggle
+  useEffect(() => {
+    updateVisualization();
+  }, [animateShots]);
+
   const initializeScene = () => {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x001122);
